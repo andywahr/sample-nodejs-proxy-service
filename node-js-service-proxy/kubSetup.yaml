@@ -1,0 +1,90 @@
+apiVersion: "aadpodidentity.k8s.io/v1"
+kind: AzureIdentity
+metadata:
+  name: akspodidentity
+spec:
+  type: 0
+  ResourceID: $ID$
+  ClientID: $CLIENTID$
+---
+apiVersion: "aadpodidentity.k8s.io/v1"
+kind: AzureIdentityBinding
+metadata:
+  name: akspodidentitybinding 
+spec:
+  AzureIdentity: akspodidentity
+  Selector: akspodidentity
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tiller
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: tiller
+    namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: encompass-proxy-service
+    aadpodidbinding: akspodidentity
+  name: encompass-proxy-service
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: encompass-proxy-service
+  template:
+    metadata:
+      labels:
+        app: encompass-proxy-service
+        aadpodidbinding: akspodidentity
+      name: encompass-proxy-service
+    spec:
+      containers:
+      - name: encompass-proxy-service
+        image: SOMENAME.azurecr.io/encompass-proxy-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: encompass-proxy-service
+  namespace: default
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: encompass-proxy-service
+  type: LoadBalancer
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: encompass-proxy-service
+  annotations:
+    kubernetes.io/ingress.class: addon-http-application-routing
+spec:
+  rules:
+  - host: encompass-proxy-service.$DNSZONE$
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: encompass-proxy-service
+          servicePort: 80  
