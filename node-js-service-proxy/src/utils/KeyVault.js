@@ -7,7 +7,7 @@ class KeyVaultHelper {
 
     async init() {
         var credentials = null;
-        if (process.env.APPSETTING_WEBSITE_SITE_NAME){
+        if (process.env.AZURE_CLIENT_ID){
             credentials = await msRestAzure.loginWithAppServiceMSI({resource: 'https://vault.azure.net'});
           } else {
             credentials = await msRestAzure.loginWithServicePrincipalSecret(process.env.AZURE_CLIENT_ID, process.env.AZURE_CLIENT_SECRET, process.env.AZURE_TENANT_ID);
